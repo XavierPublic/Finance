@@ -5,21 +5,26 @@ package org.example;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.example.utils.Transaction;
+import org.example.utils.TransactionCSVGenerator;
+import org.example.utils.TransactionExtractor;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Main {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         // Spécifie le chemin du dossier contenant les fichiers PDF
-        String folderPath = "chemin/vers/votre/dossier";
+        String folderPath = "/home/xavier/Bureau/finances";
 
         // Appel de la fonction pour extraire le texte de tous les PDF du dossier
         extractTextFromPDFsInFolder(folderPath);
     }
 
-    public static void extractTextFromPDFsInFolder(String folderPath) {
+    public static void extractTextFromPDFsInFolder(String folderPath) throws Exception {
         File folder = new File(folderPath);
         if (!folder.isDirectory()) {
             System.out.println("Le chemin spécifié n'est pas un dossier.");
@@ -33,17 +38,33 @@ public class Main {
             return;
         }
 
+        List<Transaction> transactionsTotal = new ArrayList<>();
         for (File file : files) {
             // Vérifie que le fichier est bien un PDF
             if (file.isFile() && file.getName().endsWith(".pdf")) {
                 try {
                     String text = extractTextFromPDF(file);
-                    System.out.println("Texte extrait du fichier " + file.getName() + " :");
-                    System.out.println(text);
+                    if(text != null && !text.isEmpty()){
+                        text = text.substring(text.indexOf("RELEVÉ DES OPÉRATIONS"));
+                        System.out.println(text);
+                        String[] lines = text.split("\n");
+                        for(String line : lines){
+                            transactionsTotal.addAll(TransactionExtractor.extractTransactions(line));
+                        }
+                        for (Transaction transaction : transactionsTotal) {
+                            System.out.println(transaction);
+                        }
+                    }
                 } catch (IOException e) {
                     System.err.println("Erreur lors de l'extraction du texte du fichier " + file.getName() + ": " + e.getMessage());
                 }
             }
+        }
+        //CSV Final
+        String filePath = "transactions.csv";
+        if(!transactionsTotal.isEmpty()){
+            TransactionCSVGenerator.generateCSV(transactionsTotal, filePath);
+            System.out.println("Fichier CSV généré : " + filePath);
         }
     }
 
@@ -54,3 +75,5 @@ public class Main {
         }
     }
 }
+
+
